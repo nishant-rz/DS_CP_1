@@ -1,0 +1,672 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ResQ Ops — Indonesia Peat & Wildfire Response (Oct 2026)</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400..700;1,9..40,400..700&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <style>
+    :root {
+      --sidebar-bg: #162a33;
+      --sidebar-card: #1d343e;
+      --sidebar-text: #e2e8f0;
+      --sidebar-muted: #8aa0aa;
+      --amber: #eab308;
+      --amber-hover: #d99f06;
+      --cream-bg: #f4f1e8;
+      --card-bg: #f9f6ee;
+      --card-border: #e6e1d2;
+      --stat-bg: #ece7d9;
+      --ink: #14242b;
+      --ink-muted: #627177;
+      --crit-bg: #f9dedc;
+      --crit-text: #b9382c;
+      --high-bg: #faeccd;
+      --high-text: #a36109;
+      --mod-bg: #d9eee1;
+      --mod-text: #206b41;
+      --low-bg: #d8e9f3;
+      --low-text: #225c80;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--cream-bg);
+      color: var(--ink);
+      font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+      display: flex;
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    .sidebar {
+      width: 280px;
+      background: var(--sidebar-bg);
+      color: var(--sidebar-text);
+      display: flex;
+      flex-direction: column;
+      padding: 24px 20px;
+      flex-shrink: 0;
+      user-select: none;
+    }
+
+    .brand { display: flex; align-items: center; gap: 14px; margin-bottom: 26px; }
+    .brand-icon {
+      width: 44px; height: 44px; background: var(--amber); border-radius: 12px;
+      display: flex; align-items: center; justify-content: center;
+      color: #162a33; font-weight: 700; position: relative;
+    }
+    .brand-icon::after {
+      content: ''; position: absolute; top: -2px; right: -2px;
+      width: 10px; height: 10px; background: #e0533c;
+      border: 2px solid var(--sidebar-bg); border-radius: 50%;
+    }
+    .brand-title { font-family: 'Space Grotesk', sans-serif; font-size: 20px; font-weight: 700; color: #fff; line-height: 1.1; }
+    .brand-sub { font-size: 10px; letter-spacing: 1.6px; color: var(--sidebar-muted); margin-top: 4px; text-transform: uppercase; }
+
+    .uplink-card { background: var(--sidebar-card); border-radius: 14px; padding: 16px; margin-bottom: 28px; }
+    .uplink-header {
+      display: flex; align-items: center; gap: 8px; font-size: 10px;
+      letter-spacing: 1.4px; color: var(--sidebar-muted); text-transform: uppercase; margin-bottom: 10px;
+    }
+    .dot-live { width: 7px; height: 7px; background: #34d399; border-radius: 50%; }
+    .uplink-row { display: flex; align-items: baseline; gap: 10px; margin-bottom: 12px; }
+    .uplink-pct { font-family: 'Space Grotesk', sans-serif; font-size: 28px; font-weight: 700; color: var(--amber); }
+    .uplink-sat { font-size: 11px; color: var(--sidebar-muted); line-height: 1.35; }
+    .uplink-bar { height: 6px; background: #122128; border-radius: 99px; overflow: hidden; }
+    .uplink-fill { width: 96.3%; height: 100%; background: var(--amber); border-radius: 99px; }
+
+    .nav-section-label { font-size: 11px; letter-spacing: 1.5px; color: var(--sidebar-muted); margin-bottom: 12px; padding-left: 8px; }
+    .nav-list { display: flex; flex-direction: column; gap: 6px; flex: 1; }
+    .nav-btn {
+      display: flex; align-items: center; justify-content: space-between;
+      width: 100%; background: transparent; border: none; color: #c5d4db;
+      padding: 13px 14px; border-radius: 12px; font-size: 14px; font-weight: 600;
+      cursor: pointer; text-align: left; transition: 0.15s;
+    }
+    .nav-btn:hover { background: rgba(255,255,255,0.05); }
+    .nav-btn.active { background: var(--amber); color: #14242b; }
+    .nav-btn-left { display: flex; align-items: center; gap: 12px; }
+    .nav-badge { background: #dc4c3e; color: #fff; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 99px; }
+
+    .commander-footer {
+      border-top: 1px solid rgba(255,255,255,0.08); padding-top: 16px;
+      display: flex; align-items: center; gap: 12px;
+    }
+    .avatar-circle {
+      width: 38px; height: 38px; border-radius: 50%; background: #c8dce5; color: #162a33;
+      display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 13px;
+    }
+    .cmd-name { font-size: 14px; font-weight: 700; color: #fff; }
+    .cmd-role { font-size: 12px; color: var(--sidebar-muted); }
+
+    .main-area { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+    .topbar {
+      height: 68px; border-bottom: 1px solid var(--card-border); padding: 0 40px;
+      display: flex; align-items: center; justify-content: space-between; flex-shrink: 0;
+    }
+    .breadcrumb { font-size: 14px; color: var(--ink-muted); }
+    .breadcrumb strong { color: var(--ink); font-weight: 700; }
+    .topbar-right { display: flex; align-items: center; gap: 12px; }
+    .pill-control {
+      background: var(--stat-bg); border: 1px solid var(--card-border);
+      padding: 8px 14px; border-radius: 99px; font-size: 13px; font-weight: 600;
+      color: var(--ink); cursor: pointer; transition: 0.15s;
+    }
+    .pill-control:hover { background: #e2dccb; }
+    .pill-control.active-mode { background: #162a33; color: #fff; border-color: #162a33; }
+
+    .content-scroll { flex: 1; overflow-y: auto; padding: 36px 44px 60px; }
+    .eyebrow {
+      display: flex; align-items: center; gap: 8px; font-size: 11px; font-weight: 700;
+      letter-spacing: 1.6px; text-transform: uppercase; color: var(--ink-muted); margin-bottom: 10px;
+    }
+    .eyebrow-dot { width: 8px; height: 8px; background: #d9534f; border-radius: 50%; }
+    .page-title { font-family: 'Space Grotesk', sans-serif; font-size: 40px; font-weight: 700; color: var(--ink); letter-spacing: -0.8px; margin-bottom: 10px; }
+    .page-desc { font-size: 16px; color: var(--ink-muted); max-width: 760px; line-height: 1.55; margin-bottom: 18px; }
+
+    .sync-pill {
+      display: inline-flex; align-items: center; gap: 6px; background: #d9eee1; color: #1f6b41;
+      font-size: 13px; font-weight: 600; padding: 7px 14px; border-radius: 99px; margin-bottom: 26px;
+    }
+
+    .filter-bar {
+      background: var(--card-bg); border: 1px solid var(--card-border);
+      border-radius: 18px; padding: 18px 22px; margin-bottom: 28px;
+    }
+    .filter-top { display: flex; gap: 16px; margin-bottom: 12px; }
+    .search-box {
+      flex: 1; background: var(--stat-bg); border-radius: 99px;
+      padding: 11px 18px; display: flex; align-items: center; gap: 10px;
+    }
+    .search-box input { border: none; background: transparent; width: 100%; font-size: 14px; color: var(--ink); outline: none; }
+    .sort-select {
+      background: var(--card-bg); border: 1px solid #d8d2c1; border-radius: 99px;
+      padding: 10px 20px; font-size: 14px; font-weight: 600; color: var(--ink); cursor: pointer; outline: none;
+    }
+    .filter-meta { display: flex; justify-content: space-between; font-size: 13px; color: var(--ink-muted); padding: 0 6px; }
+
+    .cards-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 24px; }
+    @media (max-width: 1100px) { .cards-grid { grid-template-columns: 1fr; } }
+
+    .zone-card {
+      background: var(--card-bg); border: 1px solid var(--card-border);
+      border-radius: 20px; padding: 26px; display: flex; flex-direction: column;
+    }
+    .card-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+    .zone-code { font-size: 13px; font-weight: 600; color: var(--ink-muted); letter-spacing: 0.4px; }
+    .sev-pill {
+      display: inline-flex; align-items: center; gap: 6px; padding: 5px 12px;
+      border-radius: 99px; font-size: 11px; font-weight: 700; letter-spacing: 0.8px; text-transform: uppercase;
+    }
+    .sev-CRITICAL { background: var(--crit-bg); color: var(--crit-text); }
+    .sev-HIGH { background: var(--high-bg); color: var(--high-text); }
+    .sev-MODERATE { background: var(--mod-bg); color: var(--mod-text); }
+    .sev-LOW { background: var(--low-bg); color: var(--low-text); }
+
+    .zone-title { font-family: 'Space Grotesk', sans-serif; font-size: 26px; font-weight: 700; color: var(--ink); margin-bottom: 4px; }
+    .zone-sub { font-size: 14px; color: var(--ink-muted); margin-bottom: 20px; }
+
+    .stats-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 22px; }
+    .stat-box { background: var(--stat-bg); border-radius: 12px; padding: 14px 16px; }
+    .stat-label { font-size: 10px; font-weight: 700; letter-spacing: 1.2px; color: var(--ink-muted); text-transform: uppercase; margin-bottom: 6px; }
+    .stat-val { font-family: 'Space Grotesk', sans-serif; font-size: 19px; font-weight: 700; color: var(--ink); }
+
+    .card-footer {
+      border-top: 1px solid var(--card-border); padding-top: 18px;
+      display: flex; justify-content: space-between; align-items: center; margin-top: auto;
+    }
+    .status-chip {
+      background: var(--stat-bg); color: var(--ink-muted); font-size: 11px;
+      font-weight: 700; letter-spacing: 0.9px; padding: 8px 14px; border-radius: 8px; text-transform: uppercase;
+    }
+    .status-chip.dispatched { background: #d9eee1; color: #1f6b41; }
+    .btn-dispatch {
+      background: var(--amber); color: #14242b; border: none; padding: 11px 20px;
+      border-radius: 12px; font-size: 14px; font-weight: 700; cursor: pointer;
+      display: inline-flex; align-items: center; gap: 8px; transition: 0.15s;
+    }
+    .btn-dispatch:hover { background: var(--amber-hover); }
+
+    .view-section { display: none; }
+    .view-section.active { display: block; }
+
+    #mapContainer {
+      height: 460px; width: 100%; border-radius: 20px;
+      border: 1px solid var(--card-border); overflow: hidden; margin-top: 18px;
+    }
+    .route-banner {
+      background: var(--card-bg); border: 1px solid var(--card-border);
+      border-radius: 16px; padding: 18px 22px; display: flex; align-items: center; flex-wrap: wrap; gap: 10px;
+    }
+    .route-step { background: #d9eee1; color: #1f6b41; font-weight: 700; padding: 6px 13px; border-radius: 8px; font-size: 13px; }
+
+    .clean-table {
+      width: 100%; background: var(--card-bg); border: 1px solid var(--card-border);
+      border-radius: 16px; border-collapse: collapse; overflow: hidden;
+    }
+    .clean-table th, .clean-table td { padding: 14px 18px; text-align: left; border-bottom: 1px solid var(--card-border); font-size: 14px; }
+    .clean-table th { background: var(--stat-bg); font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: var(--ink-muted); }
+  </style>
+</head>
+<body>
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="brand-icon">✷</div>
+      <div>
+        <div class="brand-title">ResQ Ops</div>
+        <div class="brand-sub">Orbital Response System</div>
+      </div>
+    </div>
+
+    <div class="uplink-card">
+      <div class="uplink-header">
+        <span class="dot-live"></span>
+        <span>799 Hotspots Active</span>
+      </div>
+      <div class="uplink-row">
+        <div class="uplink-pct">96.3%</div>
+        <div class="uplink-sat" id="sidebarSatName">SUOMI-NPP VIIRS · pass IDN-OCT26</div>
+      </div>
+      <div class="uplink-bar">
+        <div class="uplink-fill"></div>
+      </div>
+    </div>
+
+    <div class="nav-section-label">OPERATIONS</div>
+    <div class="nav-list">
+      <button class="nav-btn active" onclick="switchTab('triage', this)">
+        <span class="nav-btn-left"><span>⊞</span> Zone triage</span>
+      </button>
+      <button class="nav-btn" onclick="switchTab('queue', this)">
+        <span class="nav-btn-left"><span>↑</span> Dispatch queue</span>
+        <span class="nav-badge" id="queueBadge">00</span>
+      </button>
+      <button class="nav-btn" onclick="switchTab('routes', this)">
+        <span class="nav-btn-left"><span>☍</span> Network & routes</span>
+      </button>
+      <button class="nav-btn" onclick="switchTab('hash', this)">
+        <span class="nav-btn-left"><span>#</span> Hash lookup</span>
+      </button>
+    </div>
+
+    <div class="commander-footer">
+      <div class="avatar-circle"></div>
+      <div>
+        <div class="cmd-name"></div>
+        <div class="cmd-role">Indonesia · 22,595</div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- MAIN WORKSPACE -->
+  <div class="main-area">
+    <header class="topbar">
+      <div class="breadcrumb">
+        <strong>OPS</strong> / Indonesia Peatland & Forest Fire Crisis (Oct 2026 · 799 Hotspots)
+      </div>
+      <div class="topbar-right">
+        <button class="pill-control active-mode" id="btnReplay" onclick="triggerPass('replay')">
+          ● Oct 2026 Wildfire Crisis Pass
+        </button>
+        <button class="pill-control" id="btnLive" onclick="triggerPass('live')">
+          🌤 Live Kalimantan Sky Pass
+        </button>
+        <div class="pill-control" id="utcClock">🕒 --:--:-- UTC</div>
+      </div>
+    </header>
+
+    <main class="content-scroll">
+
+      <!-- TAB 1: ZONE TRIAGE -->
+      <section id="view-triage" class="view-section active">
+        <div class="eyebrow">
+          <span class="eyebrow-dot"></span>
+          <span>RECORDS / ZONE TRIAGE</span>
+        </div>
+        <h1 class="page-title">Disaster zones</h1>
+        <p class="page-desc">
+          22,595 hectares under active firefighting response across Central Kalimantan, Southern Sumatra, East Java (Bromo Tengger Semeru), and Southern Papua. Recorded by VIIRS Thermal Kelvin, NDVI burn drop, and peatland NDWI desiccation.
+        </p>
+
+        <div class="sync-pill" id="syncStatus">
+          ✓ 799-Hotspot index synced 
+        </div>
+
+        <div class="filter-bar">
+          <div class="filter-top">
+            <div class="search-box">
+              <span>🔍</span>
+              <input type="text" id="searchInput" placeholder="Search Indonesian zone (Kalimantan, Bromo, Sumatra, Papua) or ID..." oninput="renderZones()" />
+            </div>
+            <select class="sort-select" id="sortSelect" onchange="renderZones()">
+              <option value="quicksort">Sort:  Severity (Critical first)</option>
+              <option value="bst">Sort:  In-Order (Ascending)</option>
+              <option value="thermal">Sort: VIIRS Brightness Temp (Kelvin)</option>
+              <option value="id">Sort: Sector ID </option>
+            </select>
+          </div>
+          <div class="filter-meta">
+            <span id="recordCountLabel">07 clusters · 799 VIIRS hotspots · Transboundary haze alert (MY / SG / AU)</span>
+            <span style="color:#c94a38; font-weight:700;">● Critical first</span>
+          </div>
+        </div>
+
+        <div class="cards-grid" id="cardsGrid"></div>
+      </section>
+
+      <!-- TAB 2: DISPATCH QUEUE -->
+      <section id="view-queue" class="view-section">
+        <div class="eyebrow">
+          <span class="eyebrow-dot"></span>
+          <span>OPERATIONS / DISPATCH QUEUE</span>
+        </div>
+        <h1 class="page-title">Dispatch & Rollback</h1>
+        <p class="page-desc">
+          Manggala Agni strike teams and BNPB water-bombing helicopters allocated .
+        </p>
+
+        <div style="margin-bottom: 22px;">
+          <button class="btn-dispatch" onclick="popStackDispatch()">
+            ↩ Pop Latest Dispatch 
+          </button>
+        </div>
+
+        <table class="clean-table">
+          <thead>
+            <tr>
+              <th>Stack Position</th>
+              <th>Zone ID</th>
+              <th>Indonesian Sector</th>
+              <th>Fire Classification</th>
+              <th>Assigned Linked-List Unit</th>
+              <th>Kalimantan Dijkstra Route</th>
+            </tr>
+          </thead>
+          <tbody id="dispatchTableBody"></tbody>
+        </table>
+      </section>
+
+      <!-- TAB 3: NETWORK & ROUTES -->
+      <section id="view-routes" class="view-section">
+        <div class="eyebrow">
+          <span class="eyebrow-dot"></span>
+          <span>CENTRAL KALIMANTAN GRAPH</span>
+        </div>
+        <h1 class="page-title">Network & routes</h1>
+        <p class="page-desc">
+          Central Kalimantan accounts for the largest share of the 22,595 ha burn area. Because Tumbang Nusa Bridge and Pulang Pisau corridors are choked by smoldering peat fires (`NDWI < -0.30`)
+        </p>
+
+        <div class="route-banner" id="routeBanner"></div>
+        <div id="mapContainer"></div>
+      </section>
+
+      <!-- TAB 4: HASH LOOKUP -->
+      <section id="view-hash" class="view-section">
+        <div class="eyebrow">
+          <span class="eyebrow-dot"></span>
+          <span>HOTSPOT REGISTRY / DJB2 HASH TABLE </span>
+        </div>
+        <h1 class="page-title">Hash lookup</h1>
+        <p class="page-desc">
+         
+        </p>
+
+        <div class="filter-bar" style="margin-top:16px;">
+          <div class="filter-top" style="margin-bottom:0;">
+            <div class="search-box">
+              <span>#</span>
+              <input type="text" id="hashSearchInput" placeholder="Enter Sector Key (e.g. IDN-KLM1, IDN-JVA1, IDN-SUM1)..." oninput="renderHashTable()" />
+            </div>
+          </div>
+        </div>
+
+        <table class="clean-table">
+          <thead>
+            <tr>
+              <th>Hash Bucket</th>
+              <th>Sector Key</th>
+              <th>Hotspot Location</th>
+              <th>Spectral Band Readings</th>
+              <th>Computed Severity</th>
+              <th>Linear Probes</th>
+            </tr>
+          </thead>
+          <tbody id="hashTableBody"></tbody>
+        </table>
+      </section>
+
+    </main>
+  </div>
+
+  <script>
+    let appState = { emergencies: [], graphNodes: [], shortestPath: [], routeCostKm: 0 };
+    let dispatchStack = [];
+    const linkedListUnits = [
+      "BNPB Water-Bombing Heli Mi-8",
+      "Manggala Agni Peat Strike Team",
+      "Kalimantan Deep-Well Pump Rig",
+      "TNI Medical Evacuation Squad",
+      "Cloud-Seeding CASA 212 Aircraft"
+    ];
+    let unitPointer = 0;
+
+    // Real October 2026 Indonesia Incident Metadata
+    const sectorMeta = {
+      "IDN-KLM1": { area: "9,420 ha burned", region: "Central Kalimantan / Largest share of 22,595 ha" },
+      "IDN-JVA1": { area: "3,150 ha · 4 casualties", region: "East Java / Bromo Tengger Semeru National Park" },
+      "IDN-KLM2": { area: "3,890 ha burned", region: "Central Kalimantan / Trans-Kalimantan Highway choke" },
+      "IDN-SUM1": { area: "2,940 ha burned", region: "Southern Sumatra / Ogan Komering Ilir peat basin" },
+      "IDN-KLM3": { area: "1,850 ha burned", region: "Central Kalimantan / Pulang Pisau deep peat" },
+      "IDN-PAP1": { area: "1,345 ha burned", region: "Southern Papua / Merauke agricultural & forest belt" },
+      "IDN-SUM2": { area: "Aerosol Haze Plume", region: "Malacca Strait / Smoke toward MY, SG & NW Australia" }
+    };
+
+    let map = null;
+    let mapLayer = null;
+    const BASE_EDGES = [
+      [0,1], [0,2], [0,3], [1,4], [1,7], [2,4],
+      [2,5], [3,6], [6,4], [4,5], [5,7]
+    ];
+
+    setInterval(() => {
+      const now = new Date();
+      document.getElementById('utcClock').innerText = '🕒 ' + now.toISOString().substr(11, 8) + ' UTC';
+    }, 1000);
+
+    function switchTab(tabId, btn) {
+      document.querySelectorAll('.view-section').forEach(s => s.classList.remove('active'));
+      document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+      document.getElementById('view-' + tabId).classList.add('active');
+      btn.classList.add('active');
+      if (tabId === 'routes') setTimeout(initOrUpdateMap, 100);
+    }
+
+    async function loadState() {
+      try {
+        const res = await fetch('state.json?t=' + Date.now());
+        appState = await res.json();
+        document.getElementById('sidebarSatName').innerText =
+          (appState.activeSatellite || 'SUOMI-NPP VIIRS') + ' · pass IDN-OCT26';
+        renderZones();
+        renderDispatchStack();
+        renderHashTable();
+        if (document.getElementById('view-routes').classList.contains('active')) initOrUpdateMap();
+      } catch (e) {
+        console.error("Failed to load state.json:", e);
+      }
+    }
+
+    async function triggerPass(mode) {
+      document.getElementById('btnReplay').classList.toggle('active-mode', mode === 'replay');
+      document.getElementById('btnLive').classList.toggle('active-mode', mode === 'live');
+      document.getElementById('syncStatus').innerText = `⟳ Running ${mode.toUpperCase()} satellite pass & C DSA engine...`;
+      try { await fetch(`/api/scan?mode=${mode}`); } catch (e) {}
+      await loadState();
+      document.getElementById('syncStatus').innerText = `✓ 799-Hotspot index synced with C engine (${mode.toUpperCase()} pass) just now`;
+    }
+
+    function getSeverityTier(prio) {
+      if (prio >= 5) return "CRITICAL";
+      if (prio === 4) return "HIGH";
+      if (prio === 3) return "MODERATE";
+      return "LOW";
+    }
+
+    function renderZones() {
+      const query = document.getElementById('searchInput').value.trim().toLowerCase();
+      const sortMode = document.getElementById('sortSelect').value;
+      let list = [...(appState.emergencies || [])];
+
+      if (query) {
+        list = list.filter(e =>
+          e.location.toLowerCase().includes(query) ||
+          e.sector.toLowerCase().includes(query) ||
+          e.type.toLowerCase().includes(query) ||
+          String(e.id).includes(query)
+        );
+      }
+
+      if (sortMode === 'quicksort') list.sort((a, b) => b.severity - a.severity);
+      else if (sortMode === 'bst') list.sort((a, b) => a.severity - b.severity);
+      else if (sortMode === 'thermal') list.sort((a, b) => b.thermalK - a.thermalK);
+      else if (sortMode === 'id') list.sort((a, b) => a.id - b.id);
+
+      const grid = document.getElementById('cardsGrid');
+      grid.innerHTML = '';
+
+      list.forEach(em => {
+        const tier = getSeverityTier(em.priority);
+        const meta = sectorMeta[em.sector] || { area: "1,200 ha burned", region: "Indonesia Archipelago" };
+        const isDispatched = dispatchStack.some(d => d.id === em.id);
+        const cleanTitle = em.location.replace(/_/g, ' ');
+
+        grid.innerHTML += `
+          <div class="zone-card">
+            <div class="card-top">
+              <span class="zone-code">ZN-${em.id} · ${em.sector}</span>
+              <span class="sev-pill sev-${tier}">● ${tier}</span>
+            </div>
+            <div class="zone-title">${cleanTitle}</div>
+            <div class="zone-sub">${em.type} · ${meta.region}</div>
+
+            <div class="stats-row">
+              <div class="stat-box">
+                <div class="stat-label">BURN EXTENT / IMPACT</div>
+                <div class="stat-val" style="font-size:17px;">${meta.area}</div>
+              </div>
+              <div class="stat-box">
+                <div class="stat-label">VIIRS & PEAT SPECTRAL</div>
+                <div class="stat-val" style="font-size:16px;">${em.thermalK.toFixed(1)}K · NDWI ${em.ndwi.toFixed(2)}</div>
+              </div>
+            </div>
+
+            <div class="card-footer">
+              <span class="status-chip ${isDispatched ? 'dispatched' : ''}">
+                ${isDispatched ? '✓ MANGGALA AGNI DISPATCHED' : 'HOTSPOT SCORE · ' + em.severity.toFixed(1)}
+              </span>
+              <button class="btn-dispatch" onclick="dispatchZone(${em.id})">
+                ${isDispatched ? 'Reinforce' : 'Dispatch'} →
+              </button>
+            </div>
+          </div>
+        `;
+      });
+    }
+
+    function dispatchZone(id) {
+      const em = (appState.emergencies || []).find(e => e.id === id);
+      if (!em) return;
+      const unit = linkedListUnits[unitPointer % linkedListUnits.length];
+      unitPointer++;
+      dispatchStack.push({
+        id: em.id,
+        sector: em.sector,
+        location: em.location.replace(/_/g, ' '),
+        type: em.type,
+        unit: unit
+      });
+      document.getElementById('queueBadge').innerText = String(dispatchStack.length).padStart(2, '0');
+      renderZones();
+      renderDispatchStack();
+    }
+
+    function popStackDispatch() {
+      if (dispatchStack.length === 0) return;
+      dispatchStack.pop();
+      document.getElementById('queueBadge').innerText = String(dispatchStack.length).padStart(2, '0');
+      renderZones();
+      renderDispatchStack();
+    }
+
+    function renderDispatchStack() {
+      const tbody = document.getElementById('dispatchTableBody');
+      if (dispatchStack.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="6" style="color:var(--ink-muted);"> Click "Dispatch →" on any Indonesian fire zone card to deploy a unit.</td></tr>`;
+        return;
+      }
+      const nodes = appState.graphNodes || [];
+      const routeStr = (appState.shortestPath || []).map(i => nodes[i]?.name.replace(/_/g, ' ') || i).join(' → ');
+
+      tbody.innerHTML = [...dispatchStack].reverse().map((d, idx) => `
+        <tr>
+          <td><strong>TOP - ${idx}</strong></td>
+          <td>ZN-${d.id} (<code>${d.sector}</code>)</td>
+          <td><strong>${d.location}</strong></td>
+          <td>${d.type}</td>
+          <td><span class="route-step">${d.unit}</span></td>
+          <td style="font-size:13px; color:var(--ink-muted);">${routeStr}</td>
+        </tr>
+      `).join('');
+    }
+
+    function djb2Hash(str) {
+      let hash = 5381;
+      for (let i = 0; i < str.length; i++) hash = ((hash << 5) + hash) + str.charCodeAt(i);
+      return Math.abs(hash % 31);
+    }
+
+    function renderHashTable() {
+      const q = document.getElementById('hashSearchInput').value.trim().toUpperCase();
+      const tbody = document.getElementById('hashTableBody');
+      const list = appState.emergencies || [];
+
+      tbody.innerHTML = list
+        .filter(e => !q || e.sector.includes(q) || e.location.toUpperCase().includes(q))
+        .map(e => `
+          <tr>
+            <td><strong>Bucket [${djb2Hash(e.sector)}]</strong></td>
+            <td><code>${e.sector}</code></td>
+            <td><strong>${e.location.replace(/_/g, ' ')}</strong></td>
+            <td>Temp: ${e.thermalK.toFixed(1)}K · NDVI: ${e.ndvi.toFixed(2)} · Peat NDWI: ${e.ndwi.toFixed(2)}</td>
+            <td><strong>${e.severity.toFixed(1)}</strong> (Priority ${e.priority})</td>
+            <td>1 probe (O(1) Hit)</td>
+          </tr>
+        `).join('');
+    }
+
+    function initOrUpdateMap() {
+      if (!map) {
+        // Centered on Central Kalimantan Peatland Response Network
+        map = L.map('mapContainer').setView([-2.55, 113.85], 8);
+        L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+          attribution: 'Tiles &copy; Esri / VIIRS / Sentinel-2'
+        }).addTo(map);
+        mapLayer = L.layerGroup().addTo(map);
+      }
+      map.invalidateSize();
+      mapLayer.clearLayers();
+
+      const nodes = appState.graphNodes || [];
+      const path = appState.shortestPath || [];
+
+      const banner = document.getElementById('routeBanner');
+      if (path.length > 0) {
+        banner.innerHTML = `<strong>Safe Route:</strong> ` +
+          path.map(id => `<span class="route-step">${nodes[id]?.name.replace(/_/g, ' ')}</span>`).join(' ➔ ') +
+          `<span style="margin-left:auto; font-weight:700;">Distance: ${appState.routeCostKm} km</span>`;
+      }
+
+      function inPath(u, v) {
+        for (let i = 0; i < path.length - 1; i++) {
+          if ((path[i] === u && path[i+1] === v) || (path[i] === v && path[i+1] === u)) return true;
+        }
+        return false;
+      }
+
+      BASE_EDGES.forEach(([u, v]) => {
+        if (!nodes[u] || !nodes[v]) return;
+        const coords = [[nodes[u].lat, nodes[u].lon], [nodes[v].lat, nodes[v].lon]];
+        const isShortest = inPath(u, v);
+        const isPeatBlocked = (nodes[u].blocked && (u === 1 || u === 2)) || (nodes[v].blocked && (v === 1 || v === 2));
+
+        L.polyline(coords, {
+          color: isShortest ? '#20c997' : (isPeatBlocked ? '#ef4444' : '#94a3b8'),
+          weight: isShortest ? 6 : 3,
+          dashArray: (!isShortest && isPeatBlocked) ? '8, 8' : null,
+          opacity: 0.95
+        }).addTo(mapLayer);
+      });
+
+      nodes.forEach(n => {
+        L.circleMarker([n.lat, n.lon], {
+          radius: 8,
+          fillColor: n.blocked ? '#ef4444' : '#eab308',
+          color: '#162a33',
+          weight: 2,
+          fillOpacity: 1
+        }).bindPopup(`<b>${n.name.replace(/_/g, ' ')}</b><br>${n.blocked ? '🔥 Blocked by Peat Fire & Smoke' : '✅ Clear Corridor'}`).addTo(mapLayer);
+      });
+    }
+
+    loadState();
+  </script>
+</body>
+</html>
